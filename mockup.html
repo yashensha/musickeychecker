@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trackboxd / HarmonicTrack — Letterboxd Meets Apple Music for Music Nerds</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              green: '#00e054', // Classic Letterboxd rating green
+              orange: '#ff8000',
+              blue: '#40bcf4',
+              red: '#fa2d48',   // Apple Music pink/red accent
+            },
+            surface: {
+              base: '#08080a',
+              card: '#121216',
+              elevated: '#1a1a20',
+              border: '#26262e',
+              borderLight: '#32323c',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #08080a;
+      color: #f4f4f6;
+    }
+    .font-mono {
+      font-family: 'Geist Mono', monospace;
+    }
+    ::selection {
+      background-color: #00e054;
+      color: #08080a;
+    }
+    /* Minimalist Blank Cover Styling */
+    .blank-cover {
+      background: linear-gradient(145deg, #18181e 0%, #0e0e12 100%);
+      border: 1px solid #26262e;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .blank-cover::before {
+      content: '';
+      position: absolute;
+      width: 60%;
+      height: 60%;
+      border-radius: 50%;
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+    }
+    .blank-cover::after {
+      content: '';
+      position: absolute;
+      width: 25%;
+      height: 25%;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      pointer-events: none;
+    }
+    .card-group:hover .blank-cover {
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.7);
+    }
+    /* Rating Stars */
+    .star-green {
+      color: #00e054;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #08080a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #26262e;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a3a46;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-surface-base text-zinc-100 flex flex-col justify-between selection:bg-brand-green selection:text-black">
+
+  <!-- ======================================================== -->
+  <!-- 1. Apple Music x Letterboxd Sticky Frosted Header        -->
+  <!-- ======================================================== -->
+  <header class="border-b border-surface-border bg-surface-base/85 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-6">
+      
+      <!-- Brand & Letterboxd 3-dot Logo -->
+      <div class="flex items-center gap-6">
+        <a href="#" onclick="switchView('browse')" class="flex items-center gap-2.5 group">
+          <div class="flex items-center gap-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-green"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-orange"></span>
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-blue"></span>
+          </div>
+          <span class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+            Trackboxd
+            <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface-elevated text-zinc-400 border border-surface-border">Music</span>
+          </span>
+        </a>
+
+        <!-- Main Nav -->
+        <nav class="hidden md:flex items-center gap-1 text-xs font-semibold text-zinc-400">
+          <button id="nav-browse" onclick="switchView('browse')" class="px-3 py-1.5 rounded-lg text-white bg-surface-elevated border border-surface-border transition">
+            Browse & New
+          </button>
+          <button id="nav-albums" onclick="switchView('albums')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-surface-card transition">
+            Albums
+          </button>
+          <button id="nav-artists" onclick="switchView('artists')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-surface-card transition">
+            Artists
+          </button>
+          <button id="nav-lists" onclick="switchView('lists')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-surface-card transition">
+            Lists & Crates
+          </button>
+          <button id="nav-harmonic" onclick="switchView('harmonic')" class="px-3 py-1.5 rounded-lg hover:text-white hover:bg-surface-card transition flex items-center gap-1">
+            <span class="text-brand-green">●</span> Harmonic Engine
+          </button>
+        </nav>
+      </div>
+
+      <!-- Search Bar & Log Action -->
+      <div class="flex items-center gap-3 flex-1 max-w-md justify-end">
+        <div class="relative w-full max-w-xs">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input
+            id="globalSearchBar"
+            type="text"
+            onkeydown="if(event.key === 'Enter') handleSearch(this.value)"
+            placeholder="Search albums, artists, or '100bpm Cmaj'..."
+            class="w-full pl-9 pr-8 py-1.5 bg-surface-card border border-surface-border hover:border-surface-borderLight focus:border-zinc-400 rounded-lg text-xs text-white placeholder:text-zinc-500 focus:outline-none transition font-medium"
+          />
+          <kbd class="absolute right-2 top-2 text-[9px] font-mono text-zinc-500 bg-surface-elevated px-1 rounded border border-surface-border">⌘K</kbd>
+        </div>
+
+        <!-- Letterboxd "+ Log" Primary CTA -->
+        <button onclick="openLogModal()" class="px-3 py-1.5 rounded-lg bg-brand-green hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 transition shrink-0 shadow-sm">
+          <span>+</span>
+          <span>Log / Review</span>
+        </button>
+
+        <!-- User Profile Pill -->
+        <div class="w-8 h-8 rounded-full bg-surface-elevated border border-surface-border flex items-center justify-center text-xs font-bold text-zinc-300 cursor-pointer hover:border-zinc-500 transition">
+          DJ
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- 2. Main Page Content                                     -->
+  <!-- ======================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full space-y-12">
+
+    <!-- VIEW A: "Browse & New" (Letterboxd + Apple Music New) -->
+    <div id="view-browse-container" class="space-y-12">
+
+      <!-- ======================================================== -->
+      <!-- SECTION 1: Apple Music Style Editorial Hero Banner       -->
+      <!-- ======================================================== -->
+      <section class="relative rounded-2xl overflow-hidden border border-surface-border bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 p-6 sm:p-10 shadow-2xl">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          
+          <!-- Editorial Text & Rating Overview (7 cols) -->
+          <div class="md:col-span-7 space-y-4">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-mono uppercase tracking-widest font-bold text-brand-orange bg-brand-orange/10 border border-brand-orange/30 px-2.5 py-0.5 rounded-full">
+                ★ Album of the Day
+              </span>
+              <span class="text-xs font-mono text-zinc-500">Curator Selection · 2026</span>
+            </div>
+
+            <div class="space-y-1">
+              <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+                In Rainbows
+              </h1>
+              <p class="text-base text-zinc-400 font-medium">
+                Radiohead <span class="text-zinc-600">·</span> 2007 <span class="text-zinc-600">·</span> 10 Tracks <span class="text-zinc-600">·</span> Art Rock / Electronic
+              </p>
+            </div>
+
+            <!-- Letterboxd Rating Strip & Community Stats -->
+            <div class="flex items-center gap-4 text-xs font-mono py-1">
+              <div class="flex items-center gap-1.5 text-brand-green font-bold text-sm">
+                <span>★★★★★</span>
+                <span class="text-white text-xs">4.62 / 5</span>
+              </div>
+              <span class="text-zinc-600">|</span>
+              <span class="text-zinc-400"><strong class="text-zinc-200">142,890</strong> ratings</span>
+              <span class="text-zinc-600">|</span>
+              <span class="text-zinc-400"><strong class="text-zinc-200">41,200</strong> reviews</span>
+              <span class="text-zinc-600">|</span>
+              <span class="text-sky-400 bg-sky-950/60 border border-sky-800 px-2 py-0.5 rounded text-[10px]">
+                124 BPM · D Major
+              </span>
+            </div>
+
+            <!-- Reviewer Quote (Letterboxd Style) -->
+            <blockquote class="text-xs sm:text-sm text-zinc-300 italic border-l-2 border-brand-green pl-3 py-0.5 leading-relaxed">
+              "A record of peerless emotional resonance and pristine sonic architecture. From the polyrhythmic skitter of '15 Step' to the devastating beauty of 'Reckoner'."
+              <span class="not-italic text-zinc-500 block pt-1 font-mono text-[11px]">— Review by <strong>ThomFan99</strong> (★★★★★)</span>
+            </blockquote>
+
+            <!-- Hero Action Buttons -->
+            <div class="flex items-center gap-3 pt-2">
+              <button onclick="openAlbumDetail('In Rainbows', 'Radiohead', '2007', 4.62, '124 BPM · D Major')" class="px-4 py-2 rounded-lg bg-white text-black font-bold text-xs hover:bg-zinc-200 transition shadow-sm">
+                View Album Page
+              </button>
+              <button onclick="openLogModal('In Rainbows', 'Radiohead')" class="px-4 py-2 rounded-lg bg-surface-elevated hover:bg-surface-border text-white border border-surface-border font-medium text-xs transition">
+                + Log / Rate This Album
+              </button>
+              <button onclick="searchHarmonic('124bpm Dmaj')" class="px-3.5 py-2 rounded-lg bg-surface-card hover:bg-surface-elevated text-zinc-400 hover:text-white border border-surface-border font-mono text-xs transition">
+                ⇄ Find Harmonic Matches
+              </button>
+            </div>
+          </div>
+
+          <!-- Blank Album Artwork Placeholder (Apple Music Square 1:1) -->
+          <div class="md:col-span-5 flex justify-center md:justify-end">
+            <div class="w-64 h-64 sm:w-72 sm:h-72 rounded-2xl blank-cover shadow-2xl flex flex-col items-center justify-center p-6 text-center space-y-2 group cursor-pointer" onclick="openAlbumDetail('In Rainbows', 'Radiohead', '2007', 4.62, '124 BPM · D Major')">
+              <div class="text-zinc-600 font-mono text-xs uppercase tracking-widest">[ Blank Cover Artwork ]</div>
+              <div class="text-lg font-bold text-zinc-300">IN RAINBOWS</div>
+              <div class="text-xs text-zinc-500 font-mono">RADIOHEAD · 2007</div>
+              <div class="text-[10px] font-mono text-brand-green pt-2">★ 4.62 Letterboxd Avg</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: Shelf 1 — New Releases & Trending Albums      -->
+      <!-- ======================================================== -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between border-b border-surface-border pb-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-wider font-bold text-zinc-500">LATEST DROPS & HIGHLY RATED</div>
+            <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              New Releases This Week
+              <span class="text-zinc-500 text-sm font-normal cursor-pointer hover:text-white transition">›</span>
+            </h2>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono text-zinc-400">
+            <button class="px-2.5 py-1 rounded bg-surface-elevated border border-surface-border hover:text-white">All Genres</button>
+            <button class="px-2.5 py-1 rounded hover:bg-surface-card hover:text-white">Electronic</button>
+            <button class="px-2.5 py-1 rounded hover:bg-surface-card hover:text-white">Indie / Rock</button>
+            <button class="px-2.5 py-1 rounded hover:bg-surface-card hover:text-white">Hip-Hop</button>
+          </div>
+        </div>
+
+        <!-- 6-Card Album Grid (1:1 Ratio Blank Covers) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+          
+          <!-- Card 1 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('Midnights', 'Taylor Swift', '2022', 3.85, '97 BPM · E Major')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">MIDNIGHTS</div>
+              <div class="text-[10px] text-zinc-500 font-mono">TAYLOR SWIFT</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">Midnights</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Taylor Swift <span class="text-zinc-600">·</span> 2022</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 3.85</span>
+                <span class="text-zinc-500 text-[10px]">97 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('Selected Ambient Works 85-92', 'Aphex Twin', '1992', 4.54, '120 BPM · F# Minor')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">SAW 85-92</div>
+              <div class="text-[10px] text-zinc-500 font-mono">APHEX TWIN</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">Selected Ambient Works</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Aphex Twin <span class="text-zinc-600">·</span> 1992</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 4.54</span>
+                <span class="text-zinc-500 text-[10px]">120 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('Discovery', 'Daft Punk', '2001', 4.48, '124 BPM · B Minor')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">DISCOVERY</div>
+              <div class="text-[10px] text-zinc-500 font-mono">DAFT PUNK</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">Discovery</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Daft Punk <span class="text-zinc-600">·</span> 2001</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 4.48</span>
+                <span class="text-zinc-500 text-[10px]">124 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('Blonde', 'Frank Ocean', '2016', 4.60, '112 BPM · C Major')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">BLONDE</div>
+              <div class="text-[10px] text-zinc-500 font-mono">FRANK OCEAN</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">Blonde</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Frank Ocean <span class="text-zinc-600">·</span> 2016</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 4.60</span>
+                <span class="text-zinc-500 text-[10px]">112 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('Untrue', 'Burial', '2007', 4.52, '138 BPM · F Minor')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">UNTRUE</div>
+              <div class="text-[10px] text-zinc-500 font-mono">BURIAL</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">Untrue</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Burial <span class="text-zinc-600">·</span> 2007</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 4.52</span>
+                <span class="text-zinc-500 text-[10px]">138 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 6 -->
+          <div class="card-group space-y-2 cursor-pointer" onclick="openAlbumDetail('To Pimp a Butterfly', 'Kendrick Lamar', '2015', 4.71, '88 BPM · G Minor')">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-3 text-center">
+              <div class="text-xs font-bold text-zinc-300">TPAB</div>
+              <div class="text-[10px] text-zinc-500 font-mono">KENDRICK</div>
+            </div>
+            <div class="space-y-0.5">
+              <div class="text-xs font-semibold text-white truncate hover:underline">To Pimp a Butterfly</div>
+              <div class="text-[11px] text-zinc-400 truncate hover:text-white">Kendrick Lamar <span class="text-zinc-600">·</span> 2015</div>
+              <div class="flex items-center justify-between text-[11px] font-mono pt-1">
+                <span class="text-brand-green font-bold">★ 4.71</span>
+                <span class="text-zinc-500 text-[10px]">88 BPM</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 3: Shelf 2 — Popular Community Reviews (Letterboxd) -->
+      <!-- ======================================================== -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between border-b border-surface-border pb-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-wider font-bold text-zinc-500">COMMUNITY DIARY & DISCUSSIONS</div>
+            <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Popular Reviews This Week
+              <span class="text-zinc-500 text-sm font-normal cursor-pointer hover:text-white transition">›</span>
+            </h2>
+          </div>
+          <a href="#" class="text-xs font-mono text-zinc-400 hover:text-white">More Reviews →</a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          
+          <!-- Review 1 -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-14 h-14 rounded-lg blank-cover shrink-0 text-[8px] font-mono text-zinc-500 text-center p-1">
+                  DISCOVERY
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-white truncate">Discovery</div>
+                  <div class="text-xs text-zinc-400">Daft Punk (2001)</div>
+                  <div class="text-brand-green text-xs font-bold pt-0.5">★★★★★</div>
+                </div>
+              </div>
+              <p class="text-xs text-zinc-300 leading-relaxed line-clamp-3">
+                "The defining French house masterpiece. Every sample is chopped with surgery-grade precision. 'Digital Love' has one of the greatest guitar synth solos ever recorded."
+              </p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-surface-border text-[11px] font-mono text-zinc-500">
+              <div class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] text-zinc-300 font-bold">M</span>
+                <span class="text-zinc-400 font-sans font-medium">Marc_94</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span>♥ 482</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review 2 -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-14 h-14 rounded-lg blank-cover shrink-0 text-[8px] font-mono text-zinc-500 text-center p-1">
+                  UNTRUE
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-white truncate">Untrue</div>
+                  <div class="text-xs text-zinc-400">Burial (2007)</div>
+                  <div class="text-brand-green text-xs font-bold pt-0.5">★★★★★</div>
+                </div>
+              </div>
+              <p class="text-xs text-zinc-300 leading-relaxed line-clamp-3">
+                "Rain falling on London pavement at 3:30 AM while waiting for the night bus. Pitched-down R&B vocals ghosts through vinyl crackle. Will never be duplicated."
+              </p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-surface-border text-[11px] font-mono text-zinc-500">
+              <div class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] text-zinc-300 font-bold">E</span>
+                <span class="text-zinc-400 font-sans font-medium">ElenaK</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span>♥ 319</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review 3 -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-14 h-14 rounded-lg blank-cover shrink-0 text-[8px] font-mono text-zinc-500 text-center p-1">
+                  MIDNIGHTS
+                </div>
+                <div class="min-w-0">
+                  <div class="text-sm font-bold text-white truncate">Midnights</div>
+                  <div class="text-xs text-zinc-400">Taylor Swift (2022)</div>
+                  <div class="text-brand-green text-xs font-bold pt-0.5">★★★★☆</div>
+                </div>
+              </div>
+              <p class="text-xs text-zinc-300 leading-relaxed line-clamp-3">
+                "Antonoff's atmospheric synth-pop textures give Swift a melancholic late-night palette. 'Maroon' and 'Anti-Hero' represent top-tier pop songwriting."
+              </p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-surface-border text-[11px] font-mono text-zinc-500">
+              <div class="flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] text-zinc-300 font-bold">A</span>
+                <span class="text-zinc-400 font-sans font-medium">AlexR</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span>♥ 214</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 4: Shelf 3 — Curated Lists by Music Nerds        -->
+      <!-- ======================================================== -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between border-b border-surface-border pb-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-wider font-bold text-zinc-500">COMMUNITY CRATES & CURATION</div>
+            <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Popular Member Lists
+              <span class="text-zinc-500 text-sm font-normal cursor-pointer hover:text-white transition">›</span>
+            </h2>
+          </div>
+          <button class="text-xs font-mono text-zinc-400 hover:text-white">+ Create a List</button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+          
+          <!-- List Card 1 -->
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 cursor-pointer">
+            <!-- Stacked Mini Covers -->
+            <div class="flex items-center -space-x-4 overflow-hidden py-1">
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-30"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-20 opacity-90"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-10 opacity-75"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-0 opacity-60"></div>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white hover:underline truncate">Essential 90s IDM & Warp Records</h3>
+              <p class="text-[11px] text-zinc-400">42 albums · by <strong class="text-zinc-300">WarpHead</strong></p>
+              <div class="flex items-center gap-3 text-[10px] font-mono text-zinc-500 pt-1">
+                <span>♥ 1,420</span>
+                <span>·</span>
+                <span>Avg 122 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- List Card 2 -->
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 cursor-pointer">
+            <div class="flex items-center -space-x-4 overflow-hidden py-1">
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-30"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-20 opacity-90"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-10 opacity-75"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-0 opacity-60"></div>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white hover:underline truncate">Late Night 2-Step & Future Garage</h3>
+              <p class="text-[11px] text-zinc-400">28 albums · by <strong class="text-zinc-300">SouthLondonSound</strong></p>
+              <div class="flex items-center gap-3 text-[10px] font-mono text-zinc-500 pt-1">
+                <span>♥ 890</span>
+                <span>·</span>
+                <span>Avg 135 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- List Card 3 -->
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 cursor-pointer">
+            <div class="flex items-center -space-x-4 overflow-hidden py-1">
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-30"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-20 opacity-90"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-10 opacity-75"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-0 opacity-60"></div>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white hover:underline truncate">The 50 Greatest Shoegaze Records</h3>
+              <p class="text-[11px] text-zinc-400">50 albums · by <strong class="text-zinc-300">SlowdiveFan</strong></p>
+              <div class="flex items-center gap-3 text-[10px] font-mono text-zinc-500 pt-1">
+                <span>♥ 2,340</span>
+                <span>·</span>
+                <span>Avg 105 BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- List Card 4 -->
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-border hover:border-surface-borderLight transition space-y-3 cursor-pointer">
+            <div class="flex items-center -space-x-4 overflow-hidden py-1">
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-30"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-20 opacity-90"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-10 opacity-75"></div>
+              <div class="w-16 h-16 rounded-lg blank-cover shadow border border-zinc-750 shrink-0 z-0 opacity-60"></div>
+            </div>
+            <div class="space-y-1">
+              <h3 class="text-sm font-bold text-white hover:underline truncate">Harmonic Perfection: 128 BPM Club Mixes</h3>
+              <p class="text-[11px] text-zinc-400">35 albums · by <strong class="text-zinc-300">ResidentDJ</strong></p>
+              <div class="flex items-center gap-3 text-[10px] font-mono text-zinc-500 pt-1">
+                <span>♥ 3,110</span>
+                <span>·</span>
+                <span>Key C & Am</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 5: Shelf 4 — Harmonic Discovery Quick Deck       -->
+      <!-- ======================================================== -->
+      <section class="p-6 rounded-2xl bg-surface-card border border-surface-border space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="text-[11px] font-mono uppercase tracking-wider font-bold text-brand-green">HARMONIC INTELLIGENCE ENGINE</div>
+            <h2 class="text-lg font-bold text-white">Find Songs by Tempo, Key, or Transition Prompt</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="searchHarmonic('128bpm Cmaj')" class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-border text-zinc-300 text-xs font-mono border border-surface-border">
+              128bpm Cmaj
+            </button>
+            <button onclick="searchHarmonic('taylor 91 C')" class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-border text-zinc-300 text-xs font-mono border border-surface-border">
+              taylor 91 C
+            </button>
+            <button onclick="searchHarmonic('pop 91 C')" class="px-2.5 py-1 rounded bg-surface-elevated hover:bg-surface-border text-zinc-300 text-xs font-mono border border-surface-border">
+              pop 91 C
+            </button>
+          </div>
+        </div>
+
+        <p class="text-xs text-zinc-400 leading-relaxed max-w-3xl">
+          Powered by our local 2,175,665 indexed tracks. Deconstructs multi-token natural language prompts into exact keys, relative major/minor pairs, and half-time/double-time tempo bridges in under 15ms.
+        </p>
+      </section>
+
+    </div>
+
+    <!-- VIEW B: Deep Album Page Modal (Letterboxd Style) -->
+    <div id="albumModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <div class="w-full max-w-3xl rounded-2xl bg-surface-card border border-surface-border p-6 sm:p-8 space-y-6 shadow-2xl relative my-8">
+        <button onclick="closeAlbumModal()" class="absolute top-5 right-5 text-zinc-400 hover:text-white text-xl">✕</button>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-6">
+          <!-- Blank Cover Art Column (4 cols) -->
+          <div class="sm:col-span-4 space-y-3">
+            <div class="aspect-square rounded-xl blank-cover flex flex-col items-center justify-center p-4 text-center">
+              <div id="modalCoverTitle" class="text-sm font-bold text-zinc-200">ALBUM</div>
+              <div id="modalCoverArtist" class="text-[10px] text-zinc-500 font-mono">ARTIST</div>
+            </div>
+            
+            <!-- Letterboxd Quick Log / Rating Controls -->
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border text-center space-y-2">
+              <div class="text-[11px] font-mono text-zinc-400">YOUR RATING</div>
+              <div class="text-xl text-zinc-600 hover:text-brand-green cursor-pointer tracking-wider">
+                ★★★★★
+              </div>
+              <button onclick="alert('Added to your Letterboxd Diary!')" class="w-full py-1.5 rounded bg-brand-green text-black font-bold text-xs hover:bg-emerald-400 transition">
+                Log to Diary
+              </button>
+            </div>
+          </div>
+
+          <!-- Album Info & Tracklist (8 cols) -->
+          <div class="sm:col-span-8 space-y-4">
+            <div class="space-y-1">
+              <h2 id="modalAlbumTitle" class="text-2xl font-bold text-white">Album Title</h2>
+              <div class="text-sm text-zinc-400 font-medium">
+                <span id="modalAlbumArtist" class="text-zinc-200 hover:underline cursor-pointer">Artist</span> 
+                <span class="text-zinc-600">·</span> 
+                <span id="modalAlbumYear">2024</span>
+              </div>
+            </div>
+
+            <!-- Letterboxd Rating Curve Histogram Graphic -->
+            <div class="p-3 rounded-lg bg-surface-elevated border border-surface-border space-y-2">
+              <div class="flex items-center justify-between text-xs font-mono">
+                <span class="text-brand-green font-bold flex items-center gap-1">
+                  <span>★</span> <span id="modalRatingScore">4.50</span>
+                </span>
+                <span class="text-zinc-400">42.8k ratings · 12.1k reviews</span>
+              </div>
+              <!-- Mini Rating Curve Histogram Bars (0.5 to 5 stars) -->
+              <div class="flex items-end gap-1 h-10 pt-2 px-1">
+                <div class="flex-1 bg-zinc-800 h-[8%] rounded-t"></div>
+                <div class="flex-1 bg-zinc-800 h-[12%] rounded-t"></div>
+                <div class="flex-1 bg-zinc-800 h-[22%] rounded-t"></div>
+                <div class="flex-1 bg-zinc-800 h-[45%] rounded-t"></div>
+                <div class="flex-1 bg-zinc-800 h-[68%] rounded-t"></div>
+                <div class="flex-1 bg-brand-green/80 h-[100%] rounded-t"></div>
+                <div class="flex-1 bg-brand-green h-[85%] rounded-t"></div>
+              </div>
+            </div>
+
+            <!-- Tracklist with Harmonic Data -->
+            <div class="space-y-2">
+              <div class="text-xs font-semibold text-zinc-300 font-mono uppercase tracking-wider">Tracks & Key Analysis</div>
+              <div class="rounded-lg border border-surface-border divide-y divide-surface-border bg-surface-base text-xs font-mono">
+                <div class="p-2.5 flex items-center justify-between hover:bg-surface-card transition">
+                  <span class="text-zinc-200">1. Track One (Intro)</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-zinc-400">120 BPM</span>
+                    <span class="text-emerald-400 bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-800">C Maj (8B)</span>
+                  </div>
+                </div>
+                <div class="p-2.5 flex items-center justify-between hover:bg-surface-card transition">
+                  <span class="text-zinc-200">2. Lead Single</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-zinc-400">124 BPM</span>
+                    <span class="text-emerald-400 bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-800">C Maj (8B)</span>
+                  </div>
+                </div>
+                <div class="p-2.5 flex items-center justify-between hover:bg-surface-card transition">
+                  <span class="text-zinc-200">3. Harmonic Transition</span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-zinc-400">122 BPM</span>
+                    <span class="text-sky-400 bg-sky-950 px-1.5 py-0.2 rounded border border-sky-800">A Min (8A)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW C: Log / Review Modal (Letterboxd Style) -->
+    <div id="logModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="w-full max-w-lg rounded-2xl bg-surface-card border border-surface-border p-6 space-y-4 shadow-2xl relative">
+        <button onclick="closeLogModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-white text-lg">✕</button>
+
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>+ Log Album / Track</span>
+        </h3>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-zinc-400 font-mono text-[11px] mb-1">ALBUM OR SONG</label>
+            <input id="logAlbumInput" type="text" value="In Rainbows (Radiohead)" class="w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg text-white font-medium focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block text-zinc-400 font-mono text-[11px] mb-1">RATING</label>
+            <div class="flex items-center gap-2 text-2xl text-brand-green cursor-pointer">
+              ★★★★★
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-zinc-400 font-mono text-[11px] mb-1">REVIEW (OPTIONAL)</label>
+            <textarea rows="3" placeholder="Add your review or notes on mix transitions..." class="w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg text-white font-medium focus:outline-none"></textarea>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="favCheck" class="rounded bg-surface-elevated border-surface-border text-brand-green">
+            <label for="favCheck" class="text-zinc-300">Give a heart (Favorite)</label>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-surface-border">
+          <button onclick="closeLogModal()" class="px-3 py-1.5 rounded-lg text-zinc-400 hover:text-white font-medium text-xs">Cancel</button>
+          <button onclick="alert('Log saved to your profile!'); closeLogModal();" class="px-4 py-2 rounded-lg bg-brand-green text-black font-bold text-xs hover:bg-emerald-400 transition">Save Log</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- 3. Footer (Letterboxd Style)                             -->
+  <!-- ======================================================== -->
+  <footer class="border-t border-surface-border py-8 bg-surface-base text-xs font-mono text-zinc-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-brand-green"></span>
+        <span class="text-zinc-300 font-bold">Trackboxd</span>
+        <span>· The Social & Harmonic Catalog for Music Nerds</span>
+      </div>
+      <div>Indexed across 2,175,665 tracks in local PostgreSQL</div>
+    </div>
+  </footer>
+
+  <!-- Mockup Interactions Script -->
+  <script>
+    function switchView(tab) {
+      alert("Switching to " + tab + " view. In this mockup, 'Browse & New' demonstrates the complete Letterboxd x Apple Music editorial layout.");
+    }
+
+    function openAlbumDetail(title, artist, year, score, harmonic) {
+      document.getElementById('modalAlbumTitle').textContent = title;
+      document.getElementById('modalAlbumArtist').textContent = artist;
+      document.getElementById('modalAlbumYear').textContent = year;
+      document.getElementById('modalRatingScore').textContent = score.toFixed(2);
+      document.getElementById('modalCoverTitle').textContent = title.toUpperCase();
+      document.getElementById('modalCoverArtist').textContent = artist.toUpperCase();
+      document.getElementById('albumModal').classList.remove('hidden');
+    }
+
+    function closeAlbumModal() {
+      document.getElementById('albumModal').classList.add('hidden');
+    }
+
+    function openLogModal(title, artist) {
+      if (title && artist) {
+        document.getElementById('logAlbumInput').value = `${title} (${artist})`;
+      }
+      document.getElementById('logModal').classList.remove('hidden');
+    }
+
+    function closeLogModal() {
+      document.getElementById('logModal').classList.add('hidden');
+    }
+
+    function handleSearch(val) {
+      if (!val) return;
+      alert("Executing search for: '" + val + "' across 2.17M tracks.");
+    }
+
+    function searchHarmonic(prompt) {
+      alert("Triggering Harmonic Search Engine: " + prompt);
+    }
+  </script>
+</body>
+</html>
